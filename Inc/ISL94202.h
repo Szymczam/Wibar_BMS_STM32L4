@@ -49,6 +49,7 @@
 // Feedback struct
 
 	struct ISL94202_OutputValues{
+		float Vcelldiff;
 		float Vcellmin;
 		float Vcellmax;
 		float PackCurrent;
@@ -59,7 +60,10 @@
 		float Temp2;
 		float Vpack;
 		float VRGO;
-
+		//uint8_t End_of_Charge;
+		//uint8_t Pack_Shutdown;
+		//uint8_t Shutdown;
+		//uint8_t Interrupt;
 	};
 
 extern struct ISL94202_OutputValues BMSMeasurements;
