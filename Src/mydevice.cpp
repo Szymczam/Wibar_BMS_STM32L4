@@ -415,15 +415,10 @@ void timerTask(){
 
 //	HAL_GPIO_TogglePin(LD4_GPIO_Port, LD4_Pin);
 	//	RTC_CalendarShow(cpu.timestamp);
-
-	if (cpu.cnt == 0){
-		printf("Welcome from BMS_WIBAR\r\n");
 		cpu.cnt_f+=0.1;
+		cpu.cnt+=1;
 
-	}else{
-
-
-		fulltext =": Welcome from BMS_WIBAR\r";
+		fulltext = " Ala ma kota" + to_string(cpu.cnt) + "\r";
 
 
 	//	stringstream myStreamString;
@@ -431,14 +426,12 @@ void timerTask(){
 	//	sTimestamp = myStreamString.str();
 
 		//strcpy(cpu.str_buf1, sTimestamp.c_str());
-		memset(cpu.str_buf2, 0x00, sizeof(cpu.str_buf2));
 		strcpy(cpu.str_buf2, fulltext.c_str());
 
 
-		//printf("Welcome from BMS_WIBAR\r\n");
-
+		printf("Welcome from BMS_WIBAR\r\n");
 		printf((char *)cpu.str_buf2);
-	}
+
 
 	    if (cpu.SDCardSave){
 	   // 	f_write(&MyFile, cpu.str_buf1, sTimestamp.length(), &byteswritten);

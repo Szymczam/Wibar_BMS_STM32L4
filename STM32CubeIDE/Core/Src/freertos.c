@@ -147,10 +147,13 @@ typedef struct {
 	union ISL_status_t Status;
 
 	uint8_t CBFC;
+	uint8_t ForceBalancing;
 
 } BMS_t;
 BMS_t myBms;
 
+
+int cnt, runer, runer2, cnt2, cnt3, cnt4;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -220,7 +223,6 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_THREADS */
 
 }
-int runer,runer2, CBFC, cnt ;
 
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**
@@ -233,28 +235,31 @@ void StartDefaultTask(void const * argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
-	uint8_t counter;
-	float r;
-
-	  ISL94202_Init();
-
-	  	myBms.Control0.CONTROL0 = 0;;
-	  	myBms.Control0.CONTROL0_BIT.CG = 0x01;
 
 
-	  	myBms.Control2.CONTROL2 = 0;
-	  	myBms.Control2.CONTROL2_BIT.uC_FET = 1;
-	  	myBms.Control2.CONTROL2_BIT.uC_CBAL = 1;
-	  	myBms.Control2.CONTROL2_BIT.CBAL_ON = 1;
+	ISL94202_Init();
 
-	  	myBms.Control3.CONTROL3_BIT.DOZE = 0;
+	//Control 0
+	myBms.Control0.CONTROL0 = 0;;
+	myBms.Control0.CONTROL0_BIT.CG = 0x01;
+	BMS_writeByte(CONTROL0_ADDR, myBms.Control0.CONTROL0);
+	//Control 1
+	BMS_writeByte(CONTROL1_ADDR, myBms.Control1.CONTROL1);
+	//Control 2
+	myBms.Control2.CONTROL2 = 0;
+	myBms.Control2.CONTROL2_BIT.uC_FET = 1;
+	myBms.Control2.CONTROL2_BIT.uC_CBAL = 0;
+	myBms.Control2.CONTROL2_BIT.CBAL_ON = 1;
+	BMS_writeByte(CONTROL2_ADDR, myBms.Control2.CONTROL2);
+	//Control 3
+	myBms.Control3.CONTROL3_BIT.DOZE = 0;
+	BMS_writeByte(CONTROL3_ADDR, myBms.Control3.CONTROL3);
 
 
 
-	 	BMS_writeByte(CONTROL0_ADDR, myBms.Control0.CONTROL0);
-	 	BMS_writeByte(CONTROL1_ADDR, myBms.Control1.CONTROL1);
-	 	BMS_writeByte(CONTROL2_ADDR, myBms.Control2.CONTROL2);
-	 	BMS_writeByte(CONTROL3_ADDR, myBms.Control3.CONTROL3);
+
+
+
 	//Init_SDcard();
 
 
@@ -265,28 +270,54 @@ void StartDefaultTask(void const * argument)
 	{
 
 
-	  if(runer >0){
-	 	BMS_writeByte(CONTROL2_ADDR, myBms.Control2.CONTROL2);
-	 	BMS_writeByte(CONTROL3_ADDR, myBms.Control3.CONTROL3);
 
+	  if (!myBms.Status.bit.DCHING && !myBms.Status.bit.CHING){
+		  myBms.ForceBalancing = 1;
+	  }else{
+		  myBms.ForceBalancing = 0;
 	  }
 
-	  if(runer2 >0){
-	 	 BMS_writeByte(CBFC_ADDR, myBms.CBFC);
-
-
+	  if (myBms.ForceBalancing){
+		  //only one
+		 if (!BMSOpRegs.CONTROL2.CONTROL2_BIT.uC_CBAL){
+			 myBms.Control2.CONTROL2_BIT.uC_CBAL = 1;
+			 BMS_writeByte(CONTROL2_ADDR, myBms.Control2.CONTROL2);
+		 }
+		 myBms.CBFC = 0xff;
+		 BMS_writeByte(CBFC_ADDR, myBms.CBFC);
+	  }else{
+		  //only one
+		 if (BMSOpRegs.CONTROL2.CONTROL2_BIT.uC_CBAL){
+			 myBms.Control2.CONTROL2_BIT.uC_CBAL = 0;
+			 BMS_writeByte(CONTROL2_ADDR, myBms.Control2.CONTROL2);
+		 }
 	  }
 
 
-	  if (myBms.GPIO_EOC){
-		  cnt++;
-		  if (cnt >= 10){
+	  //All Shutdown
+	  if (myBms.GPIO_EOC && myBms.Status.bit.CHING){
+		  if (cnt++ >= 10){
 			  printf(": BMS shutdown!!!\r\n");
 			  myBms.Control3.CONTROL3_BIT.PDWN = 1;
 			  BMS_writeByte(CONTROL3_ADDR, myBms.Control3.CONTROL3);
 		  }
-
 	  }else cnt = 0;
+
+	  if (myBms.GPIO_SD && myBms.Status.bit.DCHING){
+		  if (cnt2++ >= 10){
+			  printf(": BMS shutdown!!!\r\n");
+			  myBms.Control3.CONTROL3_BIT.PDWN = 1;
+			  BMS_writeByte(CONTROL3_ADDR, myBms.Control3.CONTROL3);
+		  }
+	  }else{
+		  cnt2 = 0;
+	  }
+
+	  //LED 3
+	  if (myBms.GPIO_SD)__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 50);
+	  else __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 100);
+
+
 
 	  ISL94202_ReadAllMeasurements();
 
@@ -303,28 +334,25 @@ void StartDefaultTask(void const * argument)
 	  myBms.GPIO_INT	= HAL_GPIO_ReadPin(BMS_INT_GPIO_Input_GPIO_Port, 	BMS_INT_GPIO_Input_Pin);
 	  myBms.GPIO_SD		= !HAL_GPIO_ReadPin(BMS_SD_GPIO_Input_GPIO_Port, 	BMS_SD_GPIO_Input_Pin);
 
-	  myBms.GPIO_AUX2 =  myBms.GPIO_EOC;
+
+
+	  if(myBms.GPIO_EOC){
+		  if (cnt3++ >= 10)myBms.GPIO_AUX2 =  0;
+		  cnt4 = 0;
+	  }else{
+		  if (cnt4++ >= 10)myBms.GPIO_AUX2 =  1;
+		  cnt3 = 0;
+	  }
+
 
 	  HAL_GPIO_WritePin(AUX1_GPIO_Output_GPIO_Port, AUX1_GPIO_Output_Pin, myBms.GPIO_AUX1);
 	  HAL_GPIO_WritePin(AUX2_GPIO_Output_GPIO_Port, AUX2_GPIO_Output_Pin, myBms.GPIO_AUX2);
-
-	  r = 50 * (1.0f + sinf(counter));
-	  counter++;
-	  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, r);
-
 	  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin);
 
-	  //timerTask();
-      osDelay(500);
+	  timerTask();
 
 
-	memset(cpu.str_buf1, 0x00, sizeof(cpu.str_buf1));
-	printf("\r\n");
-	sprintf(cpu.str_buf1, "%d: Welcome from BMS_WIBAR\r\n", cpu.cnt++);
-	printf((char *)cpu.str_buf1);
-   // HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
-   // printf("Welcome from BMS_WIBAR\r\n");
-//    printf("------------------------\r\n");
+	  osDelay(500);
   }
   /* USER CODE END StartDefaultTask */
 }
