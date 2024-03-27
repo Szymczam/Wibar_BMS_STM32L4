@@ -236,6 +236,9 @@ void StartDefaultTask(void const * argument)
   /* USER CODE BEGIN StartDefaultTask */
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 
+	//Init_SDcard();
+
+
 
 	ISL94202_Init();
 
@@ -254,13 +257,6 @@ void StartDefaultTask(void const * argument)
 	//Control 3
 	myBms.Control3.CONTROL3_BIT.DOZE = 0;
 	BMS_writeByte(CONTROL3_ADDR, myBms.Control3.CONTROL3);
-
-
-
-
-
-
-	//Init_SDcard();
 
 
 

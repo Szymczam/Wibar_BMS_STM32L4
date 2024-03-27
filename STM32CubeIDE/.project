@@ -52,6 +52,11 @@
 			<locationURI>PARENT-1-PROJECT_LOC/Inc/mydevice.h</locationURI>
 		</link>
 		<link>
+			<name>Core/Inc/sd_diskio.h</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Middlewares/Third_Party/FatFs/src/sd_diskio.h</locationURI>
+		</link>
+		<link>
 			<name>Core/Src/BMS.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/Src/BMS.c</locationURI>

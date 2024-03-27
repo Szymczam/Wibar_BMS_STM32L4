@@ -76,7 +76,7 @@ void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
     PeriphClkInit.PLLSAI1.PLLSAI1M = 1;
     PeriphClkInit.PLLSAI1.PLLSAI1N = 8;
     PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV7;
-    PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV4;
+    PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV8;
     PeriphClkInit.PLLSAI1.PLLSAI1R = RCC_PLLR_DIV2;
     PeriphClkInit.PLLSAI1.PLLSAI1ClockOut = RCC_PLLSAI1_48M2CLK;
     if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
