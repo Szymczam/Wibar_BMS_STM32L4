@@ -28,7 +28,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "PCF8523.h"
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,6 +57,7 @@
 void SystemClock_Config(void);
 void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
+RTCDateTime data;		// Date and Time variable
 
 /* USER CODE END PFP */
 
@@ -103,22 +105,23 @@ int main(void)
 
   HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, 1);
 
-  Init_SDcard();
+  //Init_SDcard();
 
   printf("\r\n");
   printf("------------------------\r\n");
   printf("Welcome from STM32L452RE\r\n");
   printf("------------------------\r\n");
 
-
+  PCF8563_Init(&hi2c3);
+  //PCF8563_SetDateTime(&r);
 
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */
-  MX_FREERTOS_Init();
+  //MX_FREERTOS_Init();
 
   /* Start scheduler */
-  osKernelStart();
+  //osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
@@ -128,6 +131,8 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  HAL_Delay(500);
+	  PCF8563_GetDateTime(&data);
   }
   /* USER CODE END 3 */
 }
