@@ -166,7 +166,7 @@ typedef struct {
 
 #include <stdio.h>
 #include <stdlib.h>
-
+/*
 // Simple general-purpose date/time class (no TZ / DST / leap second handling!)
 class DateTime {
 public:
@@ -234,7 +234,7 @@ class PCF8523{
 
 
 
-
+*/
 
 void PCF8563_TEST1Enable(uint8_t Enable);
 void PCF8563_STOPEnable(uint8_t Enable);

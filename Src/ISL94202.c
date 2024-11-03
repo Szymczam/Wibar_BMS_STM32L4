@@ -180,9 +180,6 @@ const union BMSConfigRegisters BasicBMSConfig ={{
 		0xEF,
 
 
-
-
-
 		0xA0,
 
 

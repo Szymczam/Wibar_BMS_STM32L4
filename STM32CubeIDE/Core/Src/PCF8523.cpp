@@ -19,13 +19,13 @@ const uint8_t RTC_CLKOUT_DISABLED = ((1<<3) | (1<<4) | (1<<5));
 const uint8_t daysInMonth[] = { 31,28,31,30,31,30,31,31,30,31,30,31 };
 
 
-
+/*
 
 bool PCF8523::begin(void) {
 	//Wire.begin();
 	return true;
 }
-
+*/
 
 void PCF8563_TimerInterruptEnable(uint8_t Enable)
 {

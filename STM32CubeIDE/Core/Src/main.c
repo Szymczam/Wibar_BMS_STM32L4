@@ -112,16 +112,16 @@ int main(void)
   printf("Welcome from STM32L452RE\r\n");
   printf("------------------------\r\n");
 
-  PCF8563_Init(&hi2c3);
+ // PCF8563_Init(&hi2c3);
   //PCF8563_SetDateTime(&r);
 
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */
-  //MX_FREERTOS_Init();
+  MX_FREERTOS_Init();
 
   /* Start scheduler */
-  //osKernelStart();
+  osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
@@ -132,7 +132,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  HAL_Delay(500);
-	  PCF8563_GetDateTime(&data);
+	//  PCF8563_GetDateTime(&data);
   }
   /* USER CODE END 3 */
 }
