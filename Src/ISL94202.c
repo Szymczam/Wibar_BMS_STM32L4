@@ -79,14 +79,14 @@ const union BMSConfigRegisters BasicBMSConfig ={{
 		0x01,
 
 
-		0x64,
-
-		0x04,
-
-
 		0x05,
 
-		0x00,
+		0x08,
+
+
+		0xC8,
+
+		0x04,
 
 		0x78,
 
@@ -160,6 +160,9 @@ const union BMSConfigRegisters BasicBMSConfig ={{
 
 
 		0xEF,
+
+
+
 
 
 		0xA0,

@@ -28,8 +28,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "PCF8523.h"
-#include "stdio.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,7 +56,6 @@
 void SystemClock_Config(void);
 void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
-RTCDateTime data;		// Date and Time variable
 
 /* USER CODE END PFP */
 
@@ -112,11 +110,6 @@ int main(void)
   printf("Welcome from STM32L452RE\r\n");
   printf("------------------------\r\n");
 
-<<<<<<< HEAD
-=======
- // PCF8563_Init(&hi2c3);
-  //PCF8563_SetDateTime(&r);
->>>>>>> origin/main
 
   /* USER CODE END 2 */
 
@@ -134,8 +127,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  HAL_Delay(500);
-	//  PCF8563_GetDateTime(&data);
   }
   /* USER CODE END 3 */
 }
