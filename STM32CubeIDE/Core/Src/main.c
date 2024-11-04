@@ -87,7 +87,7 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-  HAL_Delay(500);
+  HAL_Delay(1000);
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -103,13 +103,12 @@ int main(void)
 
   HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, 1);
 
-  Init_SDcard();
+  //Init_SDcard();
 
   printf("\r\n");
   printf("------------------------\r\n");
   printf("Welcome from STM32L452RE\r\n");
   printf("------------------------\r\n");
-
 
 
   /* USER CODE END 2 */

@@ -223,7 +223,7 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_THREADS */
 
 }
-
+int kkk;
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**
   * @brief  Function implementing the defaultTask thread.
@@ -234,12 +234,13 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void const * argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
+	// For LED3
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 
 	//Init_SDcard();
 
 
-
+	//write config ISL
 	ISL94202_Init();
 
 	//Control 0
@@ -262,34 +263,49 @@ void StartDefaultTask(void const * argument)
 
 
   /* Infinite loop */
-	for(;;)
-	{
+	for(;;){
+
+		ISL94202_ReadAllMeasurements();
+
+		myBms.Errors.status.status0 = BMSOpRegs.STATUS0.STATUS0;
+		myBms.Errors.status.status1 = BMSOpRegs.STATUS1.STATUS1 & 0x3F;
+		myBms.Errors.status.status3 = BMSOpRegs.STATUS3.STATUS3 & 0x03;
+
+		myBms.Status.status.status1 = (BMSOpRegs.STATUS1.STATUS1>>7);
+		myBms.Status.status.status2 = (BMSOpRegs.STATUS2.STATUS2>>2) & 0x03;
+		myBms.Status.status.status3 = (BMSOpRegs.STATUS3.STATUS3>>2) & 0x1F;
+
+		myBms.GPIO_EOC 	= !HAL_GPIO_ReadPin(BMS_EOC_GPIO_Input_GPIO_Port, 	BMS_EOC_GPIO_Input_Pin);
+		myBms.GPIO_PSD 	= HAL_GPIO_ReadPin(BMS_EOC_PSD_Input_GPIO_Port, 	BMS_EOC_PSD_Input_Pin);
+		myBms.GPIO_INT	= HAL_GPIO_ReadPin(BMS_INT_GPIO_Input_GPIO_Port, 	BMS_INT_GPIO_Input_Pin);
+		myBms.GPIO_SD		= !HAL_GPIO_ReadPin(BMS_SD_GPIO_Input_GPIO_Port, 	BMS_SD_GPIO_Input_Pin);
 
 
 
-	  if (!myBms.Status.bit.DCHING && !myBms.Status.bit.CHING){
-		  myBms.ForceBalancing = 1;
-	  }else{
-		  myBms.ForceBalancing = 0;
-	  }
+		// Force manual balancing
+		if (!myBms.Status.bit.DCHING && !myBms.Status.bit.CHING){
+			myBms.ForceBalancing = 0;
+		}else{
+			myBms.ForceBalancing = 0;
+		}
 
-	  if (myBms.ForceBalancing){
-		  //only one
-		 if (!BMSOpRegs.CONTROL2.CONTROL2_BIT.uC_CBAL){
-			 myBms.Control2.CONTROL2_BIT.uC_CBAL = 1;
-			 BMS_writeByte(CONTROL2_ADDR, myBms.Control2.CONTROL2);
-		 }
-		 myBms.CBFC = 0xff;
-		 BMS_writeByte(CBFC_ADDR, myBms.CBFC);
-	  }else{
-		  //only one
-		 if (BMSOpRegs.CONTROL2.CONTROL2_BIT.uC_CBAL){
-			 myBms.Control2.CONTROL2_BIT.uC_CBAL = 0;
-			 BMS_writeByte(CONTROL2_ADDR, myBms.Control2.CONTROL2);
-		 }
-	  }
+		if (myBms.ForceBalancing){
+			//only one
+			if (!BMSOpRegs.CONTROL2.CONTROL2_BIT.uC_CBAL){
+				myBms.Control2.CONTROL2_BIT.uC_CBAL = 1;
+				BMS_writeByte(CONTROL2_ADDR, myBms.Control2.CONTROL2);
+			}
+			//myBms.CBFC = 0xff;
+			BMS_writeByte(CBFC_ADDR, myBms.CBFC);
+		}else{
+			//only one
+			if (BMSOpRegs.CONTROL2.CONTROL2_BIT.uC_CBAL){
+				myBms.Control2.CONTROL2_BIT.uC_CBAL = 0;
+				BMS_writeByte(CONTROL2_ADDR, myBms.Control2.CONTROL2);
+			}
+		}
 
-
+/*
 	  //All Shutdown
 	  if (myBms.GPIO_EOC && myBms.Status.bit.CHING){
 		  if (cnt++ >= 10){
@@ -298,10 +314,10 @@ void StartDefaultTask(void const * argument)
 			  BMS_writeByte(CONTROL3_ADDR, myBms.Control3.CONTROL3);
 		  }
 	  }else cnt = 0;
-
+*/
 	  if (myBms.GPIO_SD && myBms.Status.bit.DCHING){
 		  if (cnt2++ >= 10){
-			  printf(": BMS shutdown!!!\r\n");
+			  printf(": BMS force shutdown!!!\r\n");
 			  myBms.Control3.CONTROL3_BIT.PDWN = 1;
 			  BMS_writeByte(CONTROL3_ADDR, myBms.Control3.CONTROL3);
 		  }
@@ -309,34 +325,24 @@ void StartDefaultTask(void const * argument)
 		  cnt2 = 0;
 	  }
 
+
 	  //LED 3
-	  if (myBms.GPIO_SD)__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 50);
-	  else __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 100);
+	  if (myBms.GPIO_SD)__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 90);
+	  else __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 60);
 
 
 
-	  ISL94202_ReadAllMeasurements();
 
-	  myBms.Errors.status.status0 = BMSOpRegs.STATUS0.STATUS0;
-	  myBms.Errors.status.status1 = BMSOpRegs.STATUS1.STATUS1 & 0x3F;
-	  myBms.Errors.status.status3 = BMSOpRegs.STATUS3.STATUS3 & 0x03;
-
-	  myBms.Status.status.status1 = (BMSOpRegs.STATUS1.STATUS1>>7);
-	  myBms.Status.status.status2 = (BMSOpRegs.STATUS2.STATUS2>>2) & 0x03;
-	  myBms.Status.status.status3 = (BMSOpRegs.STATUS3.STATUS3>>2) & 0x1F;
-
-	  myBms.GPIO_EOC 	= !HAL_GPIO_ReadPin(BMS_EOC_GPIO_Input_GPIO_Port, 	BMS_EOC_GPIO_Input_Pin);
-	  myBms.GPIO_PSD 	= HAL_GPIO_ReadPin(BMS_EOC_PSD_Input_GPIO_Port, 	BMS_EOC_PSD_Input_Pin);
-	  myBms.GPIO_INT	= HAL_GPIO_ReadPin(BMS_INT_GPIO_Input_GPIO_Port, 	BMS_INT_GPIO_Input_Pin);
-	  myBms.GPIO_SD		= !HAL_GPIO_ReadPin(BMS_SD_GPIO_Input_GPIO_Port, 	BMS_SD_GPIO_Input_Pin);
 
 
 
 	  if(myBms.GPIO_EOC){
-		  if (cnt3++ >= 10)myBms.GPIO_AUX2 =  0;
+		  if (cnt3 >= 10) myBms.GPIO_AUX2 =  0;
+		  else cnt3++;
 		  cnt4 = 0;
 	  }else{
-		  if (cnt4++ >= 10)myBms.GPIO_AUX2 =  1;
+		  if (cnt4 >= 10) myBms.GPIO_AUX2 =  1;
+		  else cnt4++;
 		  cnt3 = 0;
 	  }
 
