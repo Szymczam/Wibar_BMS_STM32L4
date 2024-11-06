@@ -61,8 +61,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define EXT_INT_GPIO_EXTI13_Pin GPIO_PIN_13
-#define EXT_INT_GPIO_EXTI13_GPIO_Port GPIOC
+#define BUT_GPIO_input_Pin GPIO_PIN_13
+#define BUT_GPIO_input_GPIO_Port GPIOC
 #define RTC_I2C3_SCL_Pin GPIO_PIN_0
 #define RTC_I2C3_SCL_GPIO_Port GPIOC
 #define RTC_I2C3_SDA_Pin GPIO_PIN_1

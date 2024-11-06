@@ -589,6 +589,7 @@ void ISL94202_DisableEEPROM(void);
 void ISL94202_ReadPackCurrent(void);
 void ISL94202_ReadCellVoltages(void);
 void ISL94202_ReadTemperatures(void);
+void ISL94202_ReadPackVoltage(void);
 
 void ISL94202_MinMaxVoltage(void);
 void ISL94202_ReadVRGO(void);
