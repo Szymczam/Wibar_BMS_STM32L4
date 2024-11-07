@@ -29,6 +29,7 @@
 #include "math.h"
 #include "stdio.h"
 
+#include "iwdg.h"
 #include "mydevice.h"
 #include "ISL94202.h"
 #include "BMS.h"
@@ -52,12 +53,14 @@
 #define ON  		0x1
 #define OFF  		0x0
 
+#define TIME_01s  	1U
 #define TIME_05s  	5U
 #define TIME_1s  	10U
 #define TIME_2s  	20U
 #define TIME_3s  	30U
 #define TIME_5s  	50U
 #define TIME_10s 	100U
+#define TIME_12s 	120U
 #define TIME_2min 	1200U
 
 /* USER CODE END PD */
@@ -160,6 +163,7 @@ typedef struct {
 
 	uint8_t CBFC;
 	uint8_t ForceBalancing;
+	uint32_t cntWork[2];
 
 } BMS_t;
 
@@ -292,7 +296,7 @@ float Filter1_calc(float input, adc_t* add, float Ts_Ti)
 }
 
 adc_t adc[14];
-static float adc_Ts_Ti = 0.05;
+static float adc_Ts_Ti = 0.075;
 BMS_t myBms;
 BMS_LiIon bms;
 static int cnt2;
@@ -307,6 +311,17 @@ osThreadId defaultTaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
+static void Shutdown_all(void){
+	f_close(&MyFile);
+	FATFS_UnLinkDriver(SDPath);
+
+
+	printf(": BMS force shutdown!!!\r\n");
+	myBms.Control3.CONTROL3_BIT.PDWN = 1;
+	BMS_writeByte(CONTROL3_ADDR, myBms.Control3.CONTROL3);
+}
+
+
 
 /* USER CODE END FunctionPrototypes */
 
@@ -380,9 +395,7 @@ void StartDefaultTask(void const * argument)
 	// For LED3
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 
-
 	bms.init = 1;
-	//Init_SDcard();
 
 
 	//write config ISL
@@ -432,13 +445,13 @@ void StartDefaultTask(void const * argument)
 
 		if(bms.init){
 			bms.init = 0;
-			bms.state = STATE_IDLE;
+			bms.state = STATE_DISCARGE;
 			//Settings
 			bms.set.CellDiffvalue_V 		= 0.8;
 			bms.set.MaxTemperature_degree 	= 60.0;
 			bms.set.MinTemperature_degree 	= 0.0;
-			bms.set.PackVoltageMax_V 		= 29.4;
-			bms.set.PackChargeVoltage_V 	= 29.1;
+			bms.set.PackVoltageMax_V 		= 29.5;
+			bms.set.PackChargeVoltage_V 	= 29.3;
 			bms.set.PackVoltageLed30_V		= 22.5;
 			bms.set.PackDischargeVoltage_V 	= 20.5;
 			bms.set.PackVoltageMin_V 		= 19.0;
@@ -458,267 +471,259 @@ void StartDefaultTask(void const * argument)
 			if ( bms.alarms_cnt[5] > TIME_5s) bms.alarms.bit.CellOverVoltage = 1;
 
 
-
-
-
 			//Calculations
-				bms.cal.CellDiff_V = bms.Vcellmax - bms.Vcellmin;
-				if (bms.cal.CellDiff_V > bms.set.CellDiffvalue_V) 	bms.cal.CellDiff_cnt++;
-				else												bms.cal.CellDiff_cnt = 0;
-				//Buttons
-				//bms.gpio.ButtonState[BUT_WAKE] =  1;
-				bms.gpio.ButtonState[BUT_WAKE] =  HAL_GPIO_ReadPin(BUT_GPIO_input_GPIO_Port, BUT_GPIO_input_Pin);
+			bms.cal.CellDiff_V = bms.Vcellmax - bms.Vcellmin;
+			if (bms.cal.CellDiff_V > bms.set.CellDiffvalue_V) 	bms.cal.CellDiff_cnt++;
+			else												bms.cal.CellDiff_cnt = 0;
+			//Buttons
+			//bms.gpio.ButtonState[BUT_WAKE] =  1;
+			bms.gpio.ButtonState[BUT_WAKE] =  HAL_GPIO_ReadPin(BUT_GPIO_input_GPIO_Port, BUT_GPIO_input_Pin);
 	//TODO:don't use button
-				bms.gpio.ButtonState[BUT_SLEEP] =  0;
+			bms.gpio.ButtonState[BUT_SLEEP] =  0;
 
 
-				//ALARMS
-				if((bms.Temp1 > bms.set.MaxTemperature_degree ||
-						bms.Temp2 > bms.set.MaxTemperature_degree)){
-					bms.alarms_cnt[0]++;
-				}else bms.alarms_cnt[0] = 0;
-				if ( bms.alarms_cnt[0] > TIME_5s) bms.alarms.bit.OverTemperature = 1;
+			//ALARMS
+			if((bms.Temp1 > bms.set.MaxTemperature_degree ||
+					bms.Temp2 > bms.set.MaxTemperature_degree)){
+				bms.alarms_cnt[0]++;
+			}else bms.alarms_cnt[0] = 0;
+			if ( bms.alarms_cnt[0] > TIME_5s) bms.alarms.bit.OverTemperature = 1;
 
-				if((bms.Temp1 < bms.set.MinTemperature_degree ||
-						bms.Temp2 < bms.set.MinTemperature_degree)){
-					bms.alarms_cnt[1]++;
-				}else bms.alarms_cnt[1] = 0;
-				if ( bms.alarms_cnt[1] > TIME_5s) bms.alarms.bit.UnderTemperature = 1;
+			if((bms.Temp1 < bms.set.MinTemperature_degree ||
+					bms.Temp2 < bms.set.MinTemperature_degree)){
+				bms.alarms_cnt[1]++;
+			}else bms.alarms_cnt[1] = 0;
+			if ( bms.alarms_cnt[1] > TIME_5s) bms.alarms.bit.UnderTemperature = 1;
 
-				if(bms.Vpack > bms.set.PackVoltageMax_V){
-					bms.alarms_cnt[2]++;
-				}else bms.alarms_cnt[2] = 0;
-				if ( bms.alarms_cnt[2] > TIME_5s) bms.alarms.bit.PackOverVoltage = 1;
+			if(bms.Vpack > bms.set.PackVoltageMax_V){
+				bms.alarms_cnt[2]++;
+			}else bms.alarms_cnt[2] = 0;
+			if ( bms.alarms_cnt[2] > TIME_5s) bms.alarms.bit.PackOverVoltage = 1;
 
-				if(bms.Vpack < bms.set.PackVoltageMin_V){
-					bms.alarms_cnt[3]++;
-				}else bms.alarms_cnt[3] = 0;
-				if ( bms.alarms_cnt[3] > TIME_5s) bms.alarms.bit.PackUnderVoltage = 1;
+			if(bms.Vpack < bms.set.PackVoltageMin_V){
+				bms.alarms_cnt[3]++;
+			}else bms.alarms_cnt[3] = 0;
+			if ( bms.alarms_cnt[3] > TIME_5s) bms.alarms.bit.PackUnderVoltage = 1;
 
-				if(bms.cal.CellDiff_cnt > bms.set.CellDiffvalue_cnt){
-					bms.alarms_cnt[3]++;
-				}else bms.alarms_cnt[3] = 0;
-				if ( bms.alarms_cnt[3] > TIME_5s) bms.alarms.bit.CellsDiferenceVoltage = 1;
+			if(bms.cal.CellDiff_cnt > bms.set.CellDiffvalue_cnt){
+				bms.alarms_cnt[3]++;
+			}else bms.alarms_cnt[3] = 0;
+			if ( bms.alarms_cnt[3] > TIME_5s) bms.alarms.bit.CellsDiferenceVoltage = 1;
 
-				if(bms.Vcellmin < bms.set.CelVoltageMin_V){
-					bms.alarms_cnt[4]++;
-				}else bms.alarms_cnt[4] = 0;
-				if ( bms.alarms_cnt[4] > TIME_5s) bms.alarms.bit.CellUnderVoltage = 1;
+			if(bms.Vcellmin < bms.set.CelVoltageMin_V){
+				bms.alarms_cnt[4]++;
+			}else bms.alarms_cnt[4] = 0;
+			if ( bms.alarms_cnt[4] > TIME_5s) bms.alarms.bit.CellUnderVoltage = 1;
 
-				if(bms.Vcellmax > bms.set.CelVoltageMax_V){
-					bms.alarms_cnt[5]++;
-				}else bms.alarms_cnt[5] = 0;
-				if ( bms.alarms_cnt[5] > TIME_5s) bms.alarms.bit.CellOverVoltage = 1;
+			if(bms.Vcellmax > bms.set.CelVoltageMax_V){
+				bms.alarms_cnt[5]++;
+			}else bms.alarms_cnt[5] = 0;
+			if ( bms.alarms_cnt[5] > TIME_5s) bms.alarms.bit.CellOverVoltage = 1;
 
-				//if (bms.alarms.bit.ISL_OVLO) 	BMSOpRegs.STATUS0.STATUS0_BIT.OVLOF = 1;
-				//if (bms.alarms.bit.ISL_OV) 	BMSOpRegs.STATUS0.STATUS0_BIT.OVF	= 1;
-				//if (bms.alarms.bit.ISL_UV) 	BMSOpRegs.STATUS0.STATUS0_BIT.UVF	= 1;
-				//if (bms.alarms.bit.ISL_UVLO)	BMSOpRegs.STATUS0.STATUS0_BIT.UVLOF = 1;
+			//if (bms.alarms.bit.ISL_OVLO) 	BMSOpRegs.STATUS0.STATUS0_BIT.OVLOF = 1;
+			//if (bms.alarms.bit.ISL_OV) 	BMSOpRegs.STATUS0.STATUS0_BIT.OVF	= 1;
+			//if (bms.alarms.bit.ISL_UV) 	BMSOpRegs.STATUS0.STATUS0_BIT.UVF	= 1;
+			//if (bms.alarms.bit.ISL_UVLO)	BMSOpRegs.STATUS0.STATUS0_BIT.UVLOF = 1;
 
-				switch(bms.state)
-				{
-				   case STATE_IDLE:
-					   if(bms.gpio.ButtonState[BUT_WAKE]) bms.ButBlocked = 0;
-					   if (!bms.ButBlocked){
-						   if (bms.gpio.ButtonState[BUT_WAKE])	bms.cntSleep = bms.cntSleep+1;
-						   else									bms.cntSleep = 0;
-					   }
+			switch(bms.state)
+			{
+			   case STATE_IDLE:
+				   if(bms.gpio.ButtonState[BUT_WAKE]) bms.ButBlocked = 0;
+				   if (!bms.ButBlocked){
+					   if (bms.gpio.ButtonState[BUT_WAKE])	bms.cntSleep = bms.cntSleep+1;
+					   else									bms.cntSleep = 0;
+				   }
 
-					   if (bms.cntSleep >= TIME_1s) {
-						   bms.alarms.all = 0;
-						   bms.cntSleep = 0;
-						   bms.state = STATE_DISCARGE;
-					   }
+				   if (bms.cntSleep >= TIME_1s) {
+					   bms.alarms.all = 0;
+					   bms.cntSleep = 0;
 					   bms.state = STATE_DISCARGE;
+				   }
+				   //bms.state = STATE_DISCARGE;
+				   break;
+
+			   case STATE_CHARGE:
+				   //check errors
+				   if(bms.alarms.all){
+					   bms.state = STATE_ERROR;
 					   break;
+				   }
 
-				   case STATE_CHARGE:
-					   //check errors
-					   if(bms.alarms.all){
-						   bms.state = STATE_ERROR;
-						   break;
-					   }
+				   //Idle state, absorbing  charge
+				   //if(bms.PackCurrent == 0){
+					//   if(bms.cnt[0] > TIME_2min){
+					//	   bms.AbsorbingCharge = 1;
+					//   }else bms.cnt[0]++;
+				  // }else{
+					//   bms.cnt[0] = 0;
+					//   bms.AbsorbingCharge = 0;
+				  /// }
 
-					   //Idle state, absorbing  charge
-					   if(bms.PackCurrent == 0){
-						   if(bms.cnt[0] > TIME_2min){
-							   bms.AbsorbingCharge = 1;
-						   }else bms.cnt[0]++;
-					   }else{
-						   bms.cnt[0] = 0;
-						   bms.AbsorbingCharge = 0;
-					   }
-
-					   //change state to discharging
-					   if(bms.PackCurrent < 0){
-						   if(bms.cnt[1]++ > TIME_05s){
-							   bms.cnt[1] = 0;
-							   bms.state = STATE_DISCARGE;
-							   break;
-						   }
-					   }else{
+				   //change state to discharging
+				   if(bms.PackCurrent < 0){
+					   if(bms.cnt[1]++ > TIME_05s){
 						   bms.cnt[1] = 0;
-					   }
-
-					   //charge recognition
-					   if(bms.Vpack > bms.set.PackChargeVoltage_V){
-						   if(bms.cnt[2]++ > TIME_5s){
-							   bms.cnt[2] = 0;
-							   bms.state = STATE_IDLE;
-							   break;
-						   }
-					   }else{
-						   bms.cnt[2] = 0;
-					   }
-
-					   //force end of discharging
-					   if (bms.gpio.ButtonState[BUT_WAKE])	bms.cntSleep = bms.cntSleep+1;
-					   else									bms.cntSleep = 0;
-
-					   if (bms.cntSleep >= TIME_1s) {
-						   bms.ButBlocked = 1;
-						   bms.cntSleep = 0;
-						   bms.state = STATE_IDLE;
-						   printf(": BMS force shutdown!!!\r\n");
-						   //myBms.Control3.CONTROL3_BIT.PDWN = 1;
-						   //BMS_writeByte(CONTROL3_ADDR, myBms.Control3.CONTROL3);
-					   }
-
-					   break;
-
-
-				   case STATE_DISCARGE:
-					   //check errors
-					   if(bms.alarms.all){
-						   bms.state = STATE_ERROR;
+						   bms.state = STATE_DISCARGE;
 						   break;
 					   }
+				   }else{
+					   bms.cnt[1] = 0;
+				   }
 
-					   //turning off charging
-					   if(bms.PackCurrent > 0){
-						   if(bms.cnt[0]++ > TIME_10s){
-							   bms.cnt[0] = 0;
-							   bms.state = STATE_CHARGE;
-							   break;
-						   }
-					   }else{
-						   bms.cnt[0] = 0;
-					   }
-
-
-						if(bms.Vpack < bms.set.PackDischargeVoltage_V){
-						   if(bms.cnt[2]++ > TIME_10s){
-							   bms.cnt[2] = 0;
-							   bms.state = STATE_ERROR;
-						   }
-						}else{
+				   //charge recognition
+				   if(bms.Vpack > bms.set.PackChargeVoltage_V){
+					   if(bms.cnt[2]++ > TIME_5s){
 						   bms.cnt[2] = 0;
-						}
-
-					   //force end of charging
-					   if (bms.gpio.ButtonState[BUT_WAKE])	bms.cntSleep = bms.cntSleep+1;
-					   else									bms.cntSleep = 0;
-
-					   if (bms.cntSleep >= TIME_1s) {
-						   bms.ButBlocked = 1;
-						   bms.cntSleep = 0;
-						   bms.state = STATE_IDLE;
-						   printf(": BMS force shutdown!!!\r\n");
-						   //myBms.Control3.CONTROL3_BIT.PDWN = 1;
-						   //BMS_writeByte(CONTROL3_ADDR, myBms.Control3.CONTROL3);
+						   //bms.state = STATE_IDLE;
+						   //break;
 					   }
+				   }else{
+					   bms.cnt[2] = 0;
+				   }
 
+				   //force end of discharging
+				   if (bms.gpio.ButtonState[BUT_WAKE])	bms.cntSleep = bms.cntSleep+1;
+				   else									bms.cntSleep = 0;
+
+				   if (bms.cntSleep >= TIME_1s) {
+					   bms.ButBlocked = 1;
+					   bms.cntSleep = 0;
+					   Shutdown_all();
+				   }
+
+				   break;
+
+
+			   case STATE_DISCARGE:
+				   //check errors
+				   if(bms.alarms.all){
+					   bms.state = STATE_ERROR;
 					   break;
+				   }
 
-
-				   case STATE_ERROR:
-					   //Auto sleep
-					   bms.cntErrorSleep++;
-					   if (bms.cntErrorSleep >= TIME_2min) {
-						   bms.cntErrorSleep = 0;
-						   printf(": BMS force shutdown!!!\r\n");
-						   //myBms.Control3.CONTROL3_BIT.PDWN = 1;
-						   //BMS_writeByte(CONTROL3_ADDR, myBms.Control3.CONTROL3);
+				   //turning off charging
+				   if(bms.PackCurrent > 0){
+					   if(bms.cnt[0]++ > TIME_10s){
+						   bms.cnt[0] = 0;
+						   bms.state = STATE_CHARGE;
+						   break;
 					   }
+				   }else{
+					   bms.cnt[0] = 0;
+				   }
 
-					   //force end of charging
-					   if (bms.gpio.ButtonState[BUT_WAKE])	bms.cntSleep = bms.cntSleep+1;
-					   else									bms.cntSleep = 0;
 
-					   if (bms.cntSleep >= TIME_1s) {
-						   bms.ButBlocked = 1;
-						   bms.cntSleep = 0;
-						   bms.state = STATE_IDLE;
+					if(bms.Vpack < bms.set.PackDischargeVoltage_V){
+					   if(bms.cnt[2]++ > TIME_12s){
+						   bms.cnt[2] = 0;
+						   bms.state = STATE_ERROR;
 					   }
-					   break;
+					}else{
+					   bms.cnt[2] = 0;
+					}
 
-				   default:
+				   //force end of charging
+				   if (bms.gpio.ButtonState[BUT_WAKE])	bms.cntSleep = bms.cntSleep+1;
+				   else									bms.cntSleep = 0;
+
+				   if (bms.cntSleep >= TIME_1s) {
+					   bms.ButBlocked = 1;
+					   bms.cntSleep = 0;
+					   Shutdown_all();
+				   }
+
+				   break;
+
+
+			   case STATE_ERROR:
+				   //Auto sleep
+				   bms.cntErrorSleep++;
+				   if (bms.cntErrorSleep >= TIME_2min) {
+					   bms.cntErrorSleep = 0;
+					   Shutdown_all();
+				   }
+
+				   //force end of charging
+				   if (bms.gpio.ButtonState[BUT_WAKE])	bms.cntSleep = bms.cntSleep+1;
+				   else									bms.cntSleep = 0;
+
+				   if (bms.cntSleep >= TIME_1s) {
+					   bms.ButBlocked = 1;
+					   bms.cntSleep = 0;
 					   bms.state = STATE_IDLE;
-					   break;
-				}
+				   }
+				   break;
+
+			   default:
+				   bms.state = STATE_IDLE;
+				   break;
+			}
+
+
+			if(bms.Vpack > bms.set.PackChargeVoltage_V-0.1) bms.AbsorbingCharge = 1;
+			else											bms.AbsorbingCharge = 0;
+
+
+			//LED OK
+			if(bms.gpio.led_cnt[0] == TIME_2s) 	bms.gpio.led_cnt[0] = 0;
+			else								bms.gpio.led_cnt[0]++;
+			if(bms.gpio.led_cnt[1] == TIME_05s) bms.gpio.led_cnt[1] = 0;
+			else								bms.gpio.led_cnt[1]++;
+
+			if(bms.state == STATE_ERROR)				bms.gpio.LedState[LED_OK] 	= OFF;
+			else if(bms.state == STATE_CHARGE
+					&& bms.AbsorbingCharge == 0
+					&& bms.gpio.led_cnt[1] >=TIME_01s-1)bms.gpio.LedState[LED_OK] 	= ON;
+			else if(bms.state == STATE_CHARGE
+					&& bms.AbsorbingCharge == 1)		bms.gpio.LedState[LED_OK] 	= ON;
+			else if(bms.state != STATE_CHARGE
+					&& bms.gpio.led_cnt[0] >=TIME_2s-1)	bms.gpio.LedState[LED_OK] 	= ON;
+			else										bms.gpio.LedState[LED_OK] 	= OFF;
+
+			//LED 30
+			if(BMSMeasurements.Vpack < bms.set.PackVoltageLed30_V) 	bms.gpio.LedState[LED_30] = ON;
+			else													bms.gpio.LedState[LED_30] = OFF;
+
+
+			//LED 90
+			if(bms.cal.CellDiff_V >0.3){
+				if(bms.gpio.led_cnt[0] >=TIME_2s-1)	bms.gpio.LedState[LED_90] 	= !bms.gpio.ConnectorsState[0];
+				else								bms.gpio.LedState[LED_90] 	= bms.gpio.ConnectorsState[0];
+			}
+			else									bms.gpio.LedState[LED_90] 	= bms.gpio.ConnectorsState[0];
 
 
 
-				//LED OK
-				if(bms.gpio.led_cnt[0] == TIME_2s) 	bms.gpio.led_cnt[0] = 0;
-				else								bms.gpio.led_cnt[0]++;
-				if(bms.gpio.led_cnt[1] == TIME_05s) bms.gpio.led_cnt[1] = 0;
-				else								bms.gpio.led_cnt[1]++;
+			//LED ERROR
+			if(bms.cal.CellDiff_V >0.8){
+				if(bms.gpio.led_cnt[0] >=TIME_2s-1)	bms.gpio.LedState[LED_ERROR] = OFF;
+				else								bms.gpio.LedState[LED_ERROR] = ON;
+			}
+			else if (bms.state == STATE_ERROR)		bms.gpio.LedState[LED_ERROR] = ON;
+			else									bms.gpio.LedState[LED_ERROR] = OFF;
 
-				if(bms.state == STATE_ERROR)				bms.gpio.LedState[LED_OK] 	= OFF;
-				else if(bms.state == STATE_CHARGE
-						&& bms.AbsorbingCharge == 0
-						&& bms.gpio.led_cnt[1] >=TIME_05s-1)bms.gpio.LedState[LED_OK] 	= ON;
-				else if(bms.state == STATE_CHARGE
-						&& bms.AbsorbingCharge == 1)		bms.gpio.LedState[LED_OK] 	= ON;
-				else if(bms.state != STATE_CHARGE
-						&& bms.gpio.led_cnt[0] >=TIME_2s-1)	bms.gpio.LedState[LED_OK] 	= ON;
-				else										bms.gpio.LedState[LED_OK] 	= OFF;
-
-				//LED 30
-				if(BMSMeasurements.Vpack < bms.set.PackVoltageLed30_V) 	bms.gpio.LedState[LED_30] = ON;
-				else													bms.gpio.LedState[LED_30] = OFF;
-
-
-				//LED 90
-				if(bms.cal.CellDiff_V >0.3){
-					if(bms.gpio.led_cnt[0] >=TIME_2s-1)	bms.gpio.LedState[LED_90] 	= !bms.gpio.ConnectorsState[0];
-					else								bms.gpio.LedState[LED_90] 	= bms.gpio.ConnectorsState[0];
-				}
-				else									bms.gpio.LedState[LED_90] 	= bms.gpio.ConnectorsState[0];
+			//LED ON_BOARD
+			bms.gpio.LedState[LED_ON_BOARD] = bms.gpio.LedState[LED_OK];
 
 
 
-				//LED ERROR
-				if(bms.cal.CellDiff_V >0.8){
-					if(bms.gpio.led_cnt[0] >=TIME_2s-1)	bms.gpio.LedState[LED_ERROR] = OFF;
-					else								bms.gpio.LedState[LED_ERROR] = ON;
-				}
-				else if (bms.state == STATE_ERROR)		bms.gpio.LedState[LED_ERROR] = ON;
-				else									bms.gpio.LedState[LED_ERROR] = OFF;
+			if (bms.state == STATE_CHARGE || bms.state == STATE_DISCARGE)	bms.gpio.ConnectorsState[0]	= ON;
+			else															bms.gpio.ConnectorsState[0]	= OFF;
+			myBms.GPIO_AUX2 =  bms.gpio.ConnectorsState[0];
 
-				//LED ON_BOARD
-				bms.gpio.LedState[LED_ON_BOARD] = bms.gpio.LedState[LED_OK];
+			// ConnectorsState 1
+			bms.gpio.ConnectorsState[1]		= OFF;
 
 
-
-				if (bms.state == STATE_CHARGE || bms.state == STATE_DISCARGE)	bms.gpio.ConnectorsState[0]	= ON;
-				else															bms.gpio.ConnectorsState[0]	= OFF;
-				myBms.GPIO_AUX2 =  bms.gpio.ConnectorsState[0];
-
-				// ConnectorsState 1
-				bms.gpio.ConnectorsState[1]		= OFF;
-
-
-				HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 		!bms.gpio.LedState[LED_ERROR]);
-				HAL_GPIO_WritePin(LED_NEED_GPIO_Port, LED_NEED_Pin, 		!bms.gpio.LedState[LED_30]);
-				HAL_GPIO_WritePin(LED_CHARGE_GPIO_Port, LED_CHARGE_Pin,		!bms.gpio.LedState[LED_90]);
-				HAL_GPIO_WritePin(LED_OK_GPIO_Port, LED_OK_Pin, 			!bms.gpio.LedState[LED_OK]);
-				HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, 				!bms.gpio.LedState[LED_ON_BOARD]);
-				//HAL_GPIO_WritePin(OUT1_GPIO_Port, OUT1_Pin, 				bms.gpio.ConnectorsState[0]);
-				//HAL_GPIO_WritePin(OUT2_GPIO_Port, OUT2_Pin, 				bms.gpio.ConnectorsState[1]);
-				HAL_GPIO_WritePin(AUX1_GPIO_Output_GPIO_Port, AUX1_GPIO_Output_Pin, myBms.GPIO_AUX1);
-				HAL_GPIO_WritePin(AUX2_GPIO_Output_GPIO_Port, AUX2_GPIO_Output_Pin, myBms.GPIO_AUX2);
+			HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 		!bms.gpio.LedState[LED_ERROR]);
+			HAL_GPIO_WritePin(LED_NEED_GPIO_Port, LED_NEED_Pin, 		!bms.gpio.LedState[LED_30]);
+			HAL_GPIO_WritePin(LED_CHARGE_GPIO_Port, LED_CHARGE_Pin,		!bms.gpio.LedState[LED_90]);
+			HAL_GPIO_WritePin(LED_OK_GPIO_Port, LED_OK_Pin, 			!bms.gpio.LedState[LED_OK]);
+			HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, 				!bms.gpio.LedState[LED_ON_BOARD]);
+			//HAL_GPIO_WritePin(OUT1_GPIO_Port, OUT1_Pin, 				bms.gpio.ConnectorsState[0]);
+			//HAL_GPIO_WritePin(OUT2_GPIO_Port, OUT2_Pin, 				bms.gpio.ConnectorsState[1]);
+			HAL_GPIO_WritePin(AUX1_GPIO_Output_GPIO_Port, AUX1_GPIO_Output_Pin, myBms.GPIO_AUX1);
+			HAL_GPIO_WritePin(AUX2_GPIO_Output_GPIO_Port, AUX2_GPIO_Output_Pin, myBms.GPIO_AUX2);
 
 
 
@@ -772,9 +777,7 @@ void StartDefaultTask(void const * argument)
 	*/
 		  if (myBms.GPIO_SD && myBms.Status.bit.DCHING){
 			  if (cnt2++ >= 10){
-				  printf(": BMS force shutdown!!!\r\n");
-				  //myBms.Control3.CONTROL3_BIT.PDWN = 1;
-				  //BMS_writeByte(CONTROL3_ADDR, myBms.Control3.CONTROL3);
+				  Shutdown_all();
 			  }
 		  }else{
 			  cnt2 = 0;
@@ -788,12 +791,17 @@ void StartDefaultTask(void const * argument)
 
 
 
-		  //timerTask();
+
 
 		}else{
 			bms.cntStart++;
 		}
-	 osDelay(100);
+
+
+
+		if(HAL_IWDG_Refresh(&hiwdg) != HAL_OK) 	myBms.cntWork[0]++;//(1/32000)*256*2500, so max time is 20 s
+		else 									myBms.cntWork[1]++;
+		osDelay(100);
 	}
   /* USER CODE END StartDefaultTask */
 }

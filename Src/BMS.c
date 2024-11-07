@@ -171,15 +171,15 @@ void UpdateLED(BatteryState BatteryPack) {
 		Segments = BasicSegments;
 	}
 
-	LED_DRV_SetSegments(Segments);
-	LED_DRV_UpdateRegisters();
+//	LED_DRV_SetSegments(Segments);
+//	LED_DRV_UpdateRegisters();
 }
 
 
 
 void BMSCheckTemp(void) {
 
-	static uint8_t FET_State = 1;
+//	static uint8_t FET_State = 1;
 
 	for (int i = 0; i < 4; i++) {
 		h[i].Tmax = fmaxf(*h[i].T1, *h[i].T2);
@@ -324,18 +324,17 @@ void BackupRegisterInit(void)
 
 }
 
-void BackupRegWrite(uint8_t regnum,uint32_t data)
-{
-volatile unsigned int *ptr;
-ptr = RTC_BASE + 0x50 + regnum * 4;
-*ptr = data;
+//void BackupRegWrite(uint8_t regnum,uint32_t data)
+//{
+//volatile unsigned int *ptr;
+//ptr = RTC_BASE + 0x50 + regnum * 4;
+//*ptr = data;
 
 
-}
-uint32_t BackupRegRead(uint32_t regnum)
-{
-	volatile unsigned int *ptr;
-	ptr = RTC_BASE + 0x50 + regnum * 4;
-	return *ptr;
-
-}
+//}
+//uint32_t BackupRegRead(uint32_t regnum)
+//{
+//	volatile unsigned int *ptr;
+//	ptr = RTC_BASE + 0x50 + regnum * 4;
+//	return *ptr;
+//}

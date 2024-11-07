@@ -331,32 +331,27 @@ unsigned int byteswritten, bytesread;                     /* File write/read cou
 
 void Init_SDcard(){
 	/*##-1- Link the SD disk I/O driver ########################################*/
-		if(FATFS_LinkDriver(&SD_Driver, SDPath) != FR_OK){
-			Error_Handler();
-		}
-		else
-		{
-		printf("Init SD card...\r\n");
-		// Register the file system object to the FatFs module
-		 if(f_mount(&SDFatFs, (TCHAR const*)SDPath, 0) != FR_OK)	Error_Handler();
-		 else
-		 {
-		   //Create a FAT file system (format) on the logical drive
-		   if(f_mkfs((TCHAR const*)SDPath, FM_ANY, 0, SDbuffer, sizeof(SDbuffer)) != FR_OK) Error_Handler();
-		   else
-		   {
-			 /*##-4- Create and Open a new text file object with write access #####*/
-			 if(f_open(&MyFile, "STML4.TXT", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler();
-			 else printf("Done init SD card\r\n");
-		   }
-		 }
-		}
-		cpu.SDCardSave = 1;
-		cpu.SDCardClose = 1;
-		timerTask();
-
-
-
+	if(FATFS_LinkDriver(&SD_Driver, SDPath) != FR_OK){
+		Error_Handler();
+	}
+	else
+	{
+	printf("Init SD card...\r\n");
+	// Register the file system object to the FatFs module
+	 if(f_mount(&SDFatFs, (TCHAR const*)SDPath, 0) != FR_OK)	Error_Handler();
+	 else
+	 {
+	   //Create a FAT file system (format) on the logical drive
+	   //if(f_mkfs((TCHAR const*)SDPath, FM_ANY, 0, SDbuffer, sizeof(SDbuffer)) != FR_OK) Error_Handler();
+	   //else
+	   //{
+		 /*##-4- Create and Open a new text file object with write access #####*/
+		 if(f_open(&MyFile, "STML4.TXT", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler();
+		 else printf("Done init SD card\r\n");
+	 //  }
+	 }
+	}
+	//timerTask();
 }
 
 
@@ -411,38 +406,39 @@ void mainTask(){
 
 
 void timerTask(){
-	//(void) argument;
 
 //	HAL_GPIO_TogglePin(LD4_GPIO_Port, LD4_Pin);
-	//	RTC_CalendarShow(cpu.timestamp);
-		cpu.cnt_f+=0.1;
-		cpu.cnt+=1;
+//	RTC_CalendarShow(cpu.timestamp);
+	cpu.cnt_f+=0.1;
+	cpu.cnt+=1;
 
-		fulltext = " Ala ma kota" + to_string(cpu.cnt) + "\r";
-
-
-	//	stringstream myStreamString;
-	//	myStreamString << cpu.timestamp;
-	//	sTimestamp = myStreamString.str();
-
-		//strcpy(cpu.str_buf1, sTimestamp.c_str());
-		strcpy(cpu.str_buf2, fulltext.c_str());
+	fulltext = "Ala ma kota" + to_string(cpu.cnt) + "\r";
 
 
-		printf("Welcome from BMS_WIBAR\r\n");
-		printf((char *)cpu.str_buf2);
+//	stringstream myStreamString;
+//	myStreamString << cpu.timestamp;
+//	sTimestamp = myStreamString.str();
+
+	//strcpy(cpu.str_buf1, sTimestamp.c_str());
+	strcpy(cpu.str_buf2, fulltext.c_str());
 
 
-	    if (cpu.SDCardSave){
-	    //	f_write(&MyFile, cpu.str_buf1, sTimestamp.length(), &byteswritten);
-	    	res = f_write(&MyFile, cpu.str_buf2, fulltext.length(), &byteswritten);
-	    }
-	    if (cpu.SDCardClose){
-	    	cpu.SDCardSave = 0;
-	    	cpu.SDCardClose = 0;
-	    	f_close(&MyFile);
-	    	FATFS_UnLinkDriver(SDPath);
-	    }
+	printf("Welcome from BMS_WIBAR\r\n");
+	printf((char *)cpu.str_buf2);
+
+	cpu.SDCardSave = 1;
+	if (cpu.SDCardSave){
+	//	f_write(&MyFile, cpu.str_buf1, sTimestamp.length(), &byteswritten);
+		res = f_write(&MyFile, cpu.str_buf2, fulltext.length(), &byteswritten);
+		//cpu.SDCardSave = 0;
+
+	}
+	if (cpu.SDCardClose){
+		cpu.SDCardSave = 0;
+		cpu.SDCardClose = 0;
+		f_close(&MyFile);
+		FATFS_UnLinkDriver(SDPath);
+	}
 }
 
 

@@ -56,10 +56,10 @@
 
 /* External variables --------------------------------------------------------*/
 extern TIM_HandleTypeDef htim16;
-extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN EV */
-static int led_cnt;
+static int led_cnt, led_cnt2;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -168,7 +168,6 @@ void TIM1_UP_TIM16_IRQHandler(void)
   /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 0 */
 
   /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim1);
   HAL_TIM_IRQHandler(&htim16);
   /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
 	if (led_cnt == 1000)led_cnt = 0;
@@ -182,10 +181,20 @@ void TIM1_UP_TIM16_IRQHandler(void)
   /* USER CODE END TIM1_UP_TIM16_IRQn 1 */
 }
 
-/* USER CODE BEGIN 1 */
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+/**
+  * @brief This function handles TIM6 global interrupt, DAC channel1 underrun error interrupt.
+  */
+void TIM6_DAC_IRQHandler(void)
 {
+  /* USER CODE BEGIN TIM6_DAC_IRQn 0 */
 
+  /* USER CODE END TIM6_DAC_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim6);
+  /* USER CODE BEGIN TIM6_DAC_IRQn 1 */
 
+  /* USER CODE END TIM6_DAC_IRQn 1 */
 }
+
+/* USER CODE BEGIN 1 */
+
 /* USER CODE END 1 */
