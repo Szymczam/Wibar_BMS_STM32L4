@@ -396,14 +396,14 @@ void StartDefaultTask(void const * argument)
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 
 	bms.init = 1;
-
+	//cpu.SDCardSave = 1;
 
 	//write config ISL
 	ISL94202_Init();
 
 	//Control 0
 	myBms.Control0.CONTROL0 = 0;;
-	myBms.Control0.CONTROL0_BIT.CG = 0x01;
+	myBms.Control0.CONTROL0_BIT.CG = 0x01;	// The Current Gain setting to x5
 	BMS_writeByte(CONTROL0_ADDR, myBms.Control0.CONTROL0);
 	//Control 1
 	BMS_writeByte(CONTROL1_ADDR, myBms.Control1.CONTROL1);
@@ -673,7 +673,7 @@ void StartDefaultTask(void const * argument)
 			if(bms.state == STATE_ERROR)				bms.gpio.LedState[LED_OK] 	= OFF;
 			else if(bms.state == STATE_CHARGE
 					&& bms.AbsorbingCharge == 0
-					&& bms.gpio.led_cnt[1] >=TIME_01s-1)bms.gpio.LedState[LED_OK] 	= ON;
+					&& bms.gpio.led_cnt[1] >= TIME_05s-3)bms.gpio.LedState[LED_OK] 	= ON;
 			else if(bms.state == STATE_CHARGE
 					&& bms.AbsorbingCharge == 1)		bms.gpio.LedState[LED_OK] 	= ON;
 			else if(bms.state != STATE_CHARGE
@@ -776,7 +776,8 @@ void StartDefaultTask(void const * argument)
 		  }else cnt = 0;
 	*/
 		  if (myBms.GPIO_SD && myBms.Status.bit.DCHING){
-			  if (cnt2++ >= 10){
+			  if (cnt2++ >= TIME_10s){
+				  cnt2 = 0;
 				  Shutdown_all();
 			  }
 		  }else{

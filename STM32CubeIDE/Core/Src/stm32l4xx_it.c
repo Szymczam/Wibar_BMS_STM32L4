@@ -59,7 +59,8 @@ extern TIM_HandleTypeDef htim16;
 extern TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN EV */
-static int led_cnt, led_cnt2;
+extern RNG_HandleTypeDef hrng;
+static int led_cnt;
 /* USER CODE END EV */
 
 /******************************************************************************/

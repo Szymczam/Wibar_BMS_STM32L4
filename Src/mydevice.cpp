@@ -3,7 +3,7 @@
 
 #include "mydevice.h"
 #include "main.h"
-
+#include "rng.h"
 #include "sdmmc.h"
 #include <string>
 #include <bits/stdc++.h>
@@ -22,7 +22,7 @@ CPU_TypeDef cpu;
 
 uint8_t BSP_SD_Init(void)
 {
-	MX_SDMMC1_SD_Init();
+//	MX_SDMMC1_SD_Init();
   return  MSD_OK;
 }
 
@@ -34,12 +34,12 @@ uint8_t BSP_SD_IsDetected(void)
   __IO uint8_t  status = SD_PRESENT;
 
   /* Check SD card detect pin */
- // if (HAL_GPIO_ReadPin(SD_DETECT_GPIO_PORT, SD_DETECT_PIN) == GPIO_PIN_SET)
+//  if (HAL_GPIO_ReadPin(SD_DETECT_GPIO_PORT, SD_DETECT_PIN) == GPIO_PIN_SET)
 //  {
 //    status = SD_NOT_PRESENT;
 //  }
-  status = SD_PRESENT;
-    return status;
+//  status = SD_PRESENT;
+  return status;
 }
 
 /**
@@ -329,16 +329,17 @@ uint8_t SDbuffer[_MAX_SS]; /* a work buffer for the f_mkfs() */
 FRESULT res;                                          /* FatFs function common result code */
 unsigned int byteswritten, bytesread;                     /* File write/read counts */
 
+
+
 void Init_SDcard(){
+
 	/*##-1- Link the SD disk I/O driver ########################################*/
-	if(FATFS_LinkDriver(&SD_Driver, SDPath) != FR_OK){
-		Error_Handler();
-	}
+	if(FATFS_LinkDriver(&SD_Driver, SDPath) != FR_OK)	return;
 	else
 	{
 	printf("Init SD card...\r\n");
 	// Register the file system object to the FatFs module
-	 if(f_mount(&SDFatFs, (TCHAR const*)SDPath, 0) != FR_OK)	Error_Handler();
+	 if(f_mount(&SDFatFs, (TCHAR const*)SDPath, 0) != FR_OK) return;
 	 else
 	 {
 	   //Create a FAT file system (format) on the logical drive
@@ -346,8 +347,9 @@ void Init_SDcard(){
 	   //else
 	   //{
 		 /*##-4- Create and Open a new text file object with write access #####*/
-		 if(f_open(&MyFile, "STML4.TXT", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler();
+		 if(f_open(&MyFile, "STM32L4.TXT", FA_CREATE_NEW | FA_WRITE) != FR_OK) printf("Error create STM32L4.TXT\r\n");
 		 else printf("Done init SD card\r\n");
+
 	 //  }
 	 }
 	}
@@ -426,19 +428,35 @@ void timerTask(){
 	printf("Welcome from BMS_WIBAR\r\n");
 	printf((char *)cpu.str_buf2);
 
-	cpu.SDCardSave = 1;
+
 	if (cpu.SDCardSave){
 	//	f_write(&MyFile, cpu.str_buf1, sTimestamp.length(), &byteswritten);
 		res = f_write(&MyFile, cpu.str_buf2, fulltext.length(), &byteswritten);
-		//cpu.SDCardSave = 0;
-
+		cpu.SDCardSave = 0;
 	}
+
 	if (cpu.SDCardClose){
 		cpu.SDCardSave = 0;
 		cpu.SDCardClose = 0;
 		f_close(&MyFile);
-		FATFS_UnLinkDriver(SDPath);
+		//FATFS_UnLinkDriver(SDPath);
+		printf("Close SD card\r\n");
 	}
+	if (cpu.SDCreatefile){
+		string file_name = to_string(hrng.Instance->DR) + ".txt";
+		strcpy(cpu.str_file, file_name.c_str());
+		cpu.SDCreatefile = 0;
+		if(f_open(&MyFile, cpu.str_file, FA_CREATE_NEW | FA_WRITE) != FR_OK) printf("Create SD file SD\r\n");
+		else printf("Error create file SD\r\n");
+	}
+
+
+	if (cpu.SDCardInit){
+		cpu.SDCardInit = 0;
+		Init_SDcard();
+	}
+
+
 }
 
 

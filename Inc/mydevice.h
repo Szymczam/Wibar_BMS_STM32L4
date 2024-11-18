@@ -38,15 +38,17 @@ typedef struct
   uint8_t shutdown;
   char str_buf1[50];
   char str_buf2[50];
+  char str_file[20];
   uint8_t cnt;
   float cnt_f;
   __IO uint8_t aShowTime[10];
   __IO uint8_t aShowDate[10];
   uint8_t timestamp[22];
 
-  __IO uint8_t updateData;
+  __IO uint8_t SDCardInit;
   __IO uint8_t SDCardSave;
   __IO uint8_t SDCardClose;
+  __IO uint8_t SDCreatefile;
 } CPU_TypeDef;
 extern CPU_TypeDef cpu;
 

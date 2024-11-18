@@ -102,7 +102,7 @@ int main(void)
   MX_TIM3_Init();
   MX_I2C2_Init();
   MX_USART3_UART_Init();
-  //MX_SDMMC1_SD_Init();
+  MX_SDMMC1_SD_Init();
   MX_I2C3_Init();
   MX_IWDG_Init();
   MX_TIM16_Init();
@@ -111,7 +111,7 @@ int main(void)
 
   HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
 
-  //Init_SDcard();
+  Init_SDcard();
 
   printf("\r\n");
   printf("------------------------\r\n");
