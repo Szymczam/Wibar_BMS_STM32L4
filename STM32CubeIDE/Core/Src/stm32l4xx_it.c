@@ -20,6 +20,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32l4xx_it.h"
+#include "FreeRTOS.h"
+#include "task.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -56,8 +58,6 @@
 
 /* External variables --------------------------------------------------------*/
 extern TIM_HandleTypeDef htim16;
-extern TIM_HandleTypeDef htim6;
-
 /* USER CODE BEGIN EV */
 extern RNG_HandleTypeDef hrng;
 static int led_cnt;
@@ -87,7 +87,12 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-
+	HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, 				GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 		GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(LED_NEED_GPIO_Port, LED_NEED_Pin, 		GPIO_PIN_SET);
+	HAL_GPIO_WritePin(LED_CHARGE_GPIO_Port, LED_CHARGE_Pin,		GPIO_PIN_SET);
+	HAL_GPIO_WritePin(LED_OK_GPIO_Port, LED_OK_Pin, 			GPIO_PIN_SET);
+  __disable_irq();
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
   {
@@ -154,6 +159,28 @@ void DebugMon_Handler(void)
   /* USER CODE END DebugMonitor_IRQn 1 */
 }
 
+/**
+  * @brief This function handles System tick timer.
+  */
+void SysTick_Handler(void)
+{
+  /* USER CODE BEGIN SysTick_IRQn 0 */
+
+  /* USER CODE END SysTick_IRQn 0 */
+  HAL_IncTick();
+#if (INCLUDE_xTaskGetSchedulerState == 1 )
+  if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED)
+  {
+#endif /* INCLUDE_xTaskGetSchedulerState */
+  xPortSysTickHandler();
+#if (INCLUDE_xTaskGetSchedulerState == 1 )
+  }
+#endif /* INCLUDE_xTaskGetSchedulerState */
+  /* USER CODE BEGIN SysTick_IRQn 1 */
+
+  /* USER CODE END SysTick_IRQn 1 */
+}
+
 /******************************************************************************/
 /* STM32L4xx Peripheral Interrupt Handlers                                    */
 /* Add here the Interrupt Handlers for the used peripherals.                  */
@@ -171,8 +198,14 @@ void TIM1_UP_TIM16_IRQHandler(void)
   /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
   HAL_TIM_IRQHandler(&htim16);
   /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
+
+  //if (led_cnt == 1000)timerTask();
+
+  timerTask();
 	if (led_cnt == 1000)led_cnt = 0;
 	else 				led_cnt++;
+
+
 
 	//if (led_cnt < 1) 	HAL_GPIO_WritePin(LED_OK_GPIO_Port, LED_OK_Pin, 0); //on
 	//else				HAL_GPIO_WritePin(LED_OK_GPIO_Port, LED_OK_Pin, 1);	//off
@@ -180,20 +213,6 @@ void TIM1_UP_TIM16_IRQHandler(void)
 
 
   /* USER CODE END TIM1_UP_TIM16_IRQn 1 */
-}
-
-/**
-  * @brief This function handles TIM6 global interrupt, DAC channel1 underrun error interrupt.
-  */
-void TIM6_DAC_IRQHandler(void)
-{
-  /* USER CODE BEGIN TIM6_DAC_IRQn 0 */
-
-  /* USER CODE END TIM6_DAC_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim6);
-  /* USER CODE BEGIN TIM6_DAC_IRQn 1 */
-
-  /* USER CODE END TIM6_DAC_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

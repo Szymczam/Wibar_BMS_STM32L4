@@ -11,33 +11,115 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "stm32l4xx_hal.h"
 #include "main.h"
-
+#include "ISL94202.h"
 
 extern  SD_HandleTypeDef hsd1;
 
 #define BSP_SD_CardInfo HAL_SD_CardInfoTypeDef
 
-#define MSD_OK                        ((uint8_t)0x00)
-#define MSD_ERROR                     ((uint8_t)0x01)
-#define MSD_ERROR_SD_NOT_PRESENT      ((uint8_t)0x02)
+#define MSD_OK                        	((uint8_t)0x00)
+#define MSD_ERROR                     	((uint8_t)0x01)
+#define MSD_ERROR_SD_NOT_PRESENT      	((uint8_t)0x02)
+#define SD_TRANSFER_OK                	((uint8_t)0x00)
+#define SD_TRANSFER_BUSY              	((uint8_t)0x01)
+#define SD_PRESENT               		((uint8_t)0x01)
+#define SD_NOT_PRESENT           		((uint8_t)0x00)
+#define SD_DATATIMEOUT           		((uint32_t)100000000)
 
 
-#define SD_TRANSFER_OK                ((uint8_t)0x00)
-#define SD_TRANSFER_BUSY              ((uint8_t)0x01)
+
+typedef struct{
+	float CellDiff_V;
+	uint16_t CellDiff_cnt;
+} BMS_calculations;
+
+typedef struct{
+	uint8_t ButtonState[2];
+	uint8_t LedState[5];
+	uint8_t ConnectorsState[2];
+	uint16_t led_cnt[2];
+} BMS_gpio;
+
+typedef struct{
+	float CellDiffvalue_V;
+	uint16_t CellDiffvalue_cnt;
+	float MaxTemperature_degree;
+	float MinTemperature_degree;
+	float PackVoltageMax_V;
+	float PackVoltageMin_V;
+	float PackChargeVoltage_V;
+	float PackDischargeVoltage_V;
+	float PackVoltageLed30_V;
+	float CelVoltageMax_V;
+	float CelVoltageMin_V;
+} BMS_settings;
+
+typedef enum
+{
+	STATE_IDLE,
+	STATE_CHARGE,
+	STATE_DISCARGE,
+	STATE_ERROR
+} eState;
+
+union BMS_ALARMS
+{
+	uint16_t all;
+	struct{
+		uint16_t PackOverVoltage : 1;
+		uint16_t PackUnderVoltage : 1;
+		uint16_t OverTemperature : 1;
+		uint16_t UnderTemperature : 1;
+		uint16_t CellsDiferenceVoltage : 1;
+
+		uint16_t ISL_OVLO : 1;
+		uint16_t ISL_UVLO : 1;
+		uint16_t ISL_OV : 1;
+		uint16_t ISL_UV : 1;
+
+		uint16_t CellOverVoltage : 1;
+		uint16_t CellUnderVoltage : 1;
+
+		uint16_t rsvd:16-5-4-2;
+	}bit;
+};
 
 
-#define SD_PRESENT               ((uint8_t)0x01)
-#define SD_NOT_PRESENT           ((uint8_t)0x00)
 
-#define SD_DATATIMEOUT           ((uint32_t)100000000)
+
+
+typedef struct{
+	float Vcellmin;
+	float Vcellmax;
+	float PackCurrent;
+	float CellVoltages[8];
+	float Vpack;
+	float Temp1;
+	float Temp2;
+
+	BMS_gpio			gpio;
+	BMS_settings		set;
+	BMS_calculations 	cal;
+	eState				state;
+
+	union BMS_ALARMS	alarms;
+	uint8_t				alarms_cnt[6];
+	uint8_t				init;
+	uint32_t			cnt[3];
+	uint32_t			cntSleep;
+	uint32_t			cntErrorSleep;
+	uint8_t				cntStart;
+	uint8_t				ButBlocked;
+	uint8_t				AbsorbingCharge;
+} BMS_LiIon;
 
 
 typedef struct
 {
   uint8_t sleep;
   uint8_t shutdown;
-  char str_buf1[50];
-  char str_buf2[50];
+  char str_buf[10][50];
+
   char str_file[20];
   uint8_t cnt;
   float cnt_f;
@@ -73,7 +155,8 @@ extern uint8_t SDbuffer[_MAX_SS]; /* a work buffer for the f_mkfs() */
 extern FRESULT res;                                          /* FatFs function common result code */
 extern unsigned int byteswritten, bytesread;                     /* File write/read counts */
 
-
+extern CPU_TypeDef 	cpu;
+extern BMS_LiIon 	bms;
 
 
 

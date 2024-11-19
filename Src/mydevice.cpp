@@ -12,10 +12,11 @@
 
 using namespace std;
 
+
+
+
 CPU_TypeDef cpu;
-
-
-
+BMS_LiIon 	bms;
 
 
 
@@ -295,7 +296,7 @@ void SystemPower_Config(void)
 }
 
 
-string tekst, tekst2, fulltext, sTimestamp;
+
 
 
 void Shutdown_detection(){
@@ -328,7 +329,7 @@ char SDPath[4]; /* SD disk logical drive path */
 uint8_t SDbuffer[_MAX_SS]; /* a work buffer for the f_mkfs() */
 FRESULT res;                                          /* FatFs function common result code */
 unsigned int byteswritten, bytesread;                     /* File write/read counts */
-
+string tekst[20], sTimestamp;
 
 
 void Init_SDcard(){
@@ -347,13 +348,16 @@ void Init_SDcard(){
 	   //else
 	   //{
 		 /*##-4- Create and Open a new text file object with write access #####*/
-		 if(f_open(&MyFile, "STM32L4.TXT", FA_CREATE_NEW | FA_WRITE) != FR_OK) printf("Error create STM32L4.TXT\r\n");
-		 else printf("Done init SD card\r\n");
+		 //if(f_open(&MyFile, "WibarBMS.TXT", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) printf("Error create STM32L4.TXT\r\n");
+		 //else printf("Done init SD card\r\n");
 
 	 //  }
+
+
+
 	 }
 	}
-	//timerTask();
+
 }
 
 
@@ -403,35 +407,44 @@ void mainTask(){
 	        WRITE_REG( RTC->BKP31R, 0x1 );
 	        HAL_PWREx_EnterSHUTDOWNMode();
 	    }
+
+
+	    //	stringstream myStreamString;
+//	myStreamString << cpu.timestamp;
+//	sTimestamp = myStreamString.str();
 */
 }
-
+#define STRING_NUMBER   5
 
 void timerTask(){
-
-//	HAL_GPIO_TogglePin(LD4_GPIO_Port, LD4_Pin);
-//	RTC_CalendarShow(cpu.timestamp);
 	cpu.cnt_f+=0.1;
 	cpu.cnt+=1;
 
-	fulltext = "Ala ma kota" + to_string(cpu.cnt) + "\r";
+	tekst[0] = "============" + to_string(cpu.cnt) + "============\r\n";
+	tekst[1] = "Vpack=" + to_string(bms.Vpack) + "\r\n";
+	tekst[2] = "Vcelmax=" + to_string(bms.Vcellmax) + "\r\n";
+	tekst[3] = "Vcelmin=" + to_string(bms.Vcellmin) + "\r\n";
+	tekst[4] = "CPUalarms=" + to_string(bms.alarms.all) + "\r\n";
+	tekst[5] = "ISLalarms=" + to_string(myBms.Errors.all) + "\r\n";
 
+	for(int i = 0; i<=STRING_NUMBER; i++){
+		strcpy(cpu.str_buf[i], tekst[i].c_str());
+		printf((char *)cpu.str_buf[i]);
+	}
 
-//	stringstream myStreamString;
-//	myStreamString << cpu.timestamp;
-//	sTimestamp = myStreamString.str();
-
-	//strcpy(cpu.str_buf1, sTimestamp.c_str());
-	strcpy(cpu.str_buf2, fulltext.c_str());
-
-
-	printf("Welcome from BMS_WIBAR\r\n");
-	printf((char *)cpu.str_buf2);
 
 
 	if (cpu.SDCardSave){
-	//	f_write(&MyFile, cpu.str_buf1, sTimestamp.length(), &byteswritten);
-		res = f_write(&MyFile, cpu.str_buf2, fulltext.length(), &byteswritten);
+		if(f_open(&MyFile, "WibarBMS.TXT", FA_CREATE_NEW | FA_WRITE) != FR_OK) {
+			res = f_write(&MyFile, cpu.str_buf[1], tekst[1].length(), &byteswritten);
+			printf("SD: Write data to file\r\n");
+			//for(int i = 0; i<=STRING_NUMBER; i++){
+			//	res = f_write(&MyFile, cpu.str_buf[i], tekst[i].length(), &byteswritten);
+			//}
+			//f_close(&MyFile);
+		}else{
+			printf("SD: Error write data to file\r\n");
+		}
 		cpu.SDCardSave = 0;
 	}
 
@@ -446,7 +459,7 @@ void timerTask(){
 		string file_name = to_string(hrng.Instance->DR) + ".txt";
 		strcpy(cpu.str_file, file_name.c_str());
 		cpu.SDCreatefile = 0;
-		if(f_open(&MyFile, cpu.str_file, FA_CREATE_NEW | FA_WRITE) != FR_OK) printf("Create SD file SD\r\n");
+		if(f_open(&MyFile, "STM32L4.TXT", FA_CREATE_NEW) != FR_OK) printf("Create SD file SD\r\n");
 		else printf("Error create file SD\r\n");
 	}
 

@@ -232,6 +232,8 @@ struct ISL94202_OutputValues BMSMeasurements;
 struct BMSOperationRegs BMSOpRegs;
 union BMSDataRegisters BMSDataRegs;
 
+BMS_t 		myBms;
+
 void BMS_writeByte(uint8_t Dest, uint8_t Data) {
 	static uint8_t dataBuf[2];
 	dataBuf[0] = Dest;
@@ -519,4 +521,7 @@ float approximateTemp(float input, const float *RLUT, const short int *TLUT,
 
 	return -255.0;
 }
+
+
+
 

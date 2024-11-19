@@ -68,126 +68,7 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
-union ISL_errors_t
-{
-	uint16_t all;
-	struct{
-		uint8_t OVF :1;		//Overvoltage Fault
-		uint8_t OVLOF :1;	//Overvoltage Lockout Fault
-		uint8_t UVF :1;		//Undervoltage Fault
-		uint8_t UVLOF :1;	//Undervoltage Lockout Fault
-		uint8_t DOTF :1;	//Discharge Over-Temperature Fault
-		uint8_t DUTF :1;	//Discharge Under-Temperature Fault
-		uint8_t COTF :1;	//Charge Over-Temperature Fault
-		uint8_t CUTF :1;	//Charge Under-Temperature Fault
 
-		uint8_t IOTF :1;	//Internal Over-Temperature Fault
-		uint8_t COCF :1;	//Charge Overcurrent Fault
-		uint8_t DOCF :1;	//Discharge Overcurrent Fault
-		uint8_t DSCF :1;	//Discharge Short Circuit Fault
-		uint8_t CELLF :1;	//Cell Fail fault
-		uint8_t OPENF :1;	//Open-Wire Fault
-
-		uint8_t CBOTF :1;	//Cell Balance Over-Temperature Fault
-		uint8_t CBUTF :1;	//Cell Balance Under-Temperature Fault
-	}bit;
-
-	struct{
-		uint8_t status0:8;
-		uint8_t status1:6;
-		uint8_t status3:2;
-	}status;
-};
-
-
-union ISL_status_t
-{
-	uint8_t all;
-	struct{
-		uint8_t VEOC :1;	//Voltage End-of-Charge detection
-
-		uint8_t CHING :1;	//Charging
-		uint8_t DCHING :1;	//Discharging
-
-		uint8_t CBOV :1;	//Cell Balance Overvoltage
-		uint8_t CBUV :1;	//Cell Balance Undervoltage
-		uint8_t IN_IDLE :1;	//IN_IDLE
-		uint8_t IN_DOZE :1;	//IN_DOZE
-		uint8_t IN_SLEEP :1;//IN_SLEEP
-	}bit;
-
-	struct{
-		uint8_t status1 :1;
-		uint8_t status2 :2;
-		uint8_t status3 :5;
-	}status;
-};
-
-
-
-typedef struct {
-	union CONTROL0_REG Control0;
-	union CONTROL1_REG Control1;
-	union CONTROL2_REG Control2;
-	union CONTROL3_REG Control3;
-
-	/*
-	 * 	Interrupt. This pin goes active low when there is an external MCU connected to the ISL94202 and MCU
-		communication fails to send a slave byte within a watchdog timer period. This is a CMOS type output.
-	 */
-	uint8_t GPIO_INT;
-	/*
-	 * 	Shutdown. This output indicates that the ISL94202 detected a failure condition that would result in the DFET
-		turning off. This could be undervoltage, over-temperature, under-temperature, etc. The SD pin also goes active
-		if there is any charge overcurrent condition. This is an open-drain output.
-	 */
-	uint8_t GPIO_SD;
-	/*
-	 * 	Pack Shutdown. This pin is set high when any cell voltage reaches the OVLO threshold (OVLO flag).
-		Optionally, PSD is also set if there is a voltage differential between any two cells that is greater than a specified
-		limit (CELLF flag) or if there is an open-wire condition. This pin can be used with external circuitry for blowing a
-		fuse in the pack or as an interrupt to an external MCU
-	 */
-	uint8_t GPIO_PSD;
-	/*
-	 * 	End-of-Charge. This output indicates that the ISL94202 detected a fully charged condition. This is defined by
-		any cell voltage exceeding an EOC voltage (as defined by an EOC value in EEPROM).
-	 */
-	uint8_t GPIO_EOC;
-
-	uint8_t GPIO_AUX1;
-	uint8_t GPIO_AUX2;
-
-	union ISL_errors_t Errors;
-	union ISL_status_t Status;
-
-	uint8_t CBFC;
-	uint8_t ForceBalancing;
-	uint32_t cntWork[2];
-
-} BMS_t;
-
-union BMS_ALARMS
-{
-	uint16_t all;
-	struct{
-		uint16_t PackOverVoltage : 1;
-		uint16_t PackUnderVoltage : 1;
-		uint16_t OverTemperature : 1;
-		uint16_t UnderTemperature : 1;
-		uint16_t CellsDiferenceVoltage : 1;
-
-		uint16_t ISL_OVLO : 1;
-		uint16_t ISL_UVLO : 1;
-		uint16_t ISL_OV : 1;
-		uint16_t ISL_UV : 1;
-
-		uint16_t CellOverVoltage : 1;
-		uint16_t CellUnderVoltage : 1;
-
-		uint16_t rsvd:16-5-4-2;
-	}bit;
-};
 
 
 typedef enum
@@ -203,73 +84,8 @@ typedef enum
 	LED_OK,
 	LED_90,
 	LED_30
+}eLed_state;
 
-} eLed_state;
-
-typedef enum
-{
-	STATE_IDLE,
-	STATE_CHARGE,
-	STATE_DISCARGE,
-	STATE_ERROR
-} eState;
-
-
-typedef struct{
-	uint8_t ButtonState[2];
-	uint8_t LedState[5];
-	uint8_t ConnectorsState[2];
-	uint16_t led_cnt[2];
-
-} BMS_gpio;
-
-typedef struct{
-	float CellDiffvalue_V;
-	uint16_t CellDiffvalue_cnt;
-	float MaxTemperature_degree;
-	float MinTemperature_degree;
-	float PackVoltageMax_V;
-	float PackVoltageMin_V;
-	float PackChargeVoltage_V;
-	float PackDischargeVoltage_V;
-	float PackVoltageLed30_V;
-	float CelVoltageMax_V;
-	float CelVoltageMin_V;
-} BMS_settings;
-
-typedef struct{
-	float CellDiff_V;
-	uint16_t CellDiff_cnt;
-
-} BMS_calculations;
-
-
-
-typedef struct{
-	float Vcellmin;
-	float Vcellmax;
-	float PackCurrent;
-	float CellVoltages[8];
-	float Vpack;
-	float Temp1;
-	float Temp2;
-
-	BMS_gpio			gpio;
-	BMS_settings		set;
-	BMS_calculations 	cal;
-	eState				state;
-
-	union BMS_ALARMS	alarms;
-	uint8_t				alarms_cnt[6];
-	uint8_t				init;
-	uint32_t			cnt[3];
-	uint32_t			cntSleep;
-	uint32_t			cntErrorSleep;
-	uint8_t				cntStart;
-	uint8_t				ButBlocked;
-	uint8_t				AbsorbingCharge;
-
-} BMS_LiIon;
 
 typedef struct {
 	float out;
@@ -297,8 +113,8 @@ float Filter1_calc(float input, adc_t* add, float Ts_Ti)
 
 adc_t adc[14];
 static float adc_Ts_Ti = 0.075;
-BMS_t myBms;
-BMS_LiIon bms;
+
+
 static int cnt2;
 
 /* USER CODE END PM */
@@ -398,6 +214,7 @@ void StartDefaultTask(void const * argument)
 	bms.init = 1;
 	//cpu.SDCardSave = 1;
 
+
 	//write config ISL
 	ISL94202_Init();
 
@@ -430,6 +247,29 @@ void StartDefaultTask(void const * argument)
 		ISL94202_ReadVRGO();
 		ISL94202_ReadStatusRegisters();
 		ISL94202_ReadControlRegisters();
+
+
+
+		myBms.Errors.bit.OVF	= BMSOpRegs.STATUS0.STATUS0_BIT.OVF;
+		myBms.Errors.bit.OVLOF	= BMSOpRegs.STATUS0.STATUS0_BIT.OVLOF;
+		myBms.Errors.bit.UVF	= BMSOpRegs.STATUS0.STATUS0_BIT.UVF;
+		myBms.Errors.bit.UVLOF	= BMSOpRegs.STATUS0.STATUS0_BIT.UVLOF;
+		myBms.Errors.bit.DOTF	= BMSOpRegs.STATUS0.STATUS0_BIT.DOTF;
+		myBms.Errors.bit.DUTF	= BMSOpRegs.STATUS0.STATUS0_BIT.DUTF;
+		myBms.Errors.bit.COTF	= BMSOpRegs.STATUS0.STATUS0_BIT.COTF;
+		myBms.Errors.bit.CUTF	= BMSOpRegs.STATUS0.STATUS0_BIT.CUTF;
+
+		myBms.Errors.bit.IOTF	= BMSOpRegs.STATUS1.STATUS1_BIT.IOTF;
+		myBms.Errors.bit.COCF	= BMSOpRegs.STATUS1.STATUS1_BIT.COCF;
+		myBms.Errors.bit.DOCF	= BMSOpRegs.STATUS1.STATUS1_BIT.DOCF;
+		myBms.Errors.bit.DSCF	= BMSOpRegs.STATUS1.STATUS1_BIT.DSCF;
+		myBms.Errors.bit.CELLF	= BMSOpRegs.STATUS1.STATUS1_BIT.CELLF;
+		myBms.Errors.bit.OPENF	= BMSOpRegs.STATUS1.STATUS1_BIT.OPENF;
+
+		myBms.Errors.bit.CBOT	= BMSOpRegs.STATUS3.STATUS3_BIT.CBOT;
+		myBms.Errors.bit.CBUT	= BMSOpRegs.STATUS3.STATUS3_BIT.CBUT;
+
+
 
 
 		//filter adc measurements
@@ -765,16 +605,8 @@ void StartDefaultTask(void const * argument)
 				}
 			}
 
-	/*
-		  //All Shutdown
-		  if (myBms.GPIO_EOC && myBms.Status.bit.CHING){
-			  if (cnt++ >= 10){
-				  printf(": BMS shutdown!!!\r\n");
-				  myBms.Control3.CONTROL3_BIT.PDWN = 1;
-				  BMS_writeByte(CONTROL3_ADDR, myBms.Control3.CONTROL3);
-			  }
-		  }else cnt = 0;
-	*/
+
+
 		  if (myBms.GPIO_SD && myBms.Status.bit.DCHING){
 			  if (cnt2++ >= TIME_10s){
 				  cnt2 = 0;
@@ -790,10 +622,6 @@ void StartDefaultTask(void const * argument)
 		  else __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 60);
 
 
-
-
-
-
 		}else{
 			bms.cntStart++;
 		}
@@ -802,7 +630,11 @@ void StartDefaultTask(void const * argument)
 
 		if(HAL_IWDG_Refresh(&hiwdg) != HAL_OK) 	myBms.cntWork[0]++;//(1/32000)*256*2500, so max time is 20 s
 		else 									myBms.cntWork[1]++;
+
+
 		osDelay(100);
+	//	timerTask();
+
 	}
   /* USER CODE END StartDefaultTask */
 }
